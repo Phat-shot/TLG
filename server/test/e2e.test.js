@@ -60,13 +60,21 @@ test('Kompletter Match-Fluss mit drei Spielern', async () => {
     assert.equal(err.code, 'not_all_ready');
 
     B.emit(EV.LOBBY_READY, { ready: true }); C.emit(EV.LOBBY_READY, { ready: true });
-    await waitFor(A, EV.LOBBY_STATE, s => s.members.filter(m => m.ready).length === 2);
-    A.emit(EV.LOBBY_ASSIGN, { userId: 'c', pin: 'kerker' });
-    await waitFor(A, EV.LOBBY_STATE, s => s.members.find(m => m.id === 'c').pin === 'kerker');
+    const stR = await waitFor(A, EV.LOBBY_STATE, s => s.members.filter(m => m.ready).length === 2);
+    // 3 Spieler, Teamgröße 2 → wirksam 1 → drei Einzelteams, Team Rot (0) ist zuerst Kerker. Host schiebt C nach Rot.
+    assert.equal(stR.effectiveTeamSize, 1); assert.equal(stR.teams.length, 3);
+    const cTeam = stR.teams.findIndex(t => t.members.includes('c'));
+    const redOccupant = stR.teams[0].members[0];
+    if (cTeam !== 0) {
+      A.emit(EV.LOBBY_TEAM, { userId: 'c', team: 0 });
+      A.emit(EV.LOBBY_TEAM, { userId: redOccupant, team: cTeam });
+      await waitFor(A, EV.LOBBY_STATE, s => s.teams[0].members.length === 1 && s.teams[0].members[0] === 'c' && s.teamsValid);
+    }
 
     A.emit(EV.LOBBY_START);
     const [gA, gB, gC] = await Promise.all([waitFor(A, EV.GAME_START), waitFor(B, EV.GAME_START), waitFor(C, EV.GAME_START)]);
     assert.equal(gC.role, 'kerker'); assert.equal(gA.role, 'hero'); assert.equal(gB.role, 'hero');
+    assert.equal(gA.round, 1); assert.equal(gA.rounds, 3); assert.equal(gA.kerkerTeam.name, 'Rot'); assert.equal(gA.teams.length, 3);
     assert.equal(gA.map.tiles.length, 48 * 32);
     assert.deepEqual(gA.map.entrance, gC.map.entrance);
 
@@ -103,8 +111,11 @@ test('Kompletter Match-Fluss mit drei Spielern', async () => {
     const over = await waitFor(A, EV.GAME_OVER);
     assert.equal(over.result.winner, 'heroes'); assert.equal(over.result.reason, 'kerker_left');
     assert.equal(over.lobby.status, 'waiting');
-    assert.equal(over.lobby.tally.find(t => t.id === 'a').heroWins, 1);
-    assert.equal(app.matches.matches.size === 0 || true, true);
+    // Kerker-Team Rot ist weg → zwei Teams übrig, beide haben als Helden +2 bekommen, Serie läuft weiter (Runde 2 von 2)
+    assert.ok(over.lobby.series, 'Serie sollte weiterlaufen');
+    assert.equal(over.lobby.series.rounds, 2); assert.equal(over.lobby.series.round, 1);
+    assert.deepEqual(over.lobby.teams.map(t => [t.name, t.points]), [['Blau', 2], ['Grün', 2]]);
+    assert.equal(over.lobby.stats.find(t => t.id === 'a').heroRounds, 1);
     await new Promise(r => setTimeout(r, 200));
     assert.equal(app.matches.matches.size, 0, 'Worker nicht aufgeräumt');
   } finally { A.close(); B.close(); C.close(); }

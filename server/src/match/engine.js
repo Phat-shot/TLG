@@ -372,7 +372,7 @@ function checkArtifact(state) {
   } else {
     const h = state.heroes.get(a.carrier);
     a.x = h.x; a.y = h.y;
-    if (Math.floor(h.x) === state.map.exit.x && Math.floor(h.y) === state.map.exit.y) endMatch(state, 'heroes', 'artifact_delivered');
+    if (Math.floor(h.x) === state.map.exit.x && Math.floor(h.y) === state.map.exit.y) endMatch(state, 'heroes', 'artifact_delivered', { deliveredBy: h.id });
   }
 }
 
@@ -383,11 +383,11 @@ function checkEnd(state) {
   if (!anyAlive && state.heroes.size > 0) endMatch(state, 'kerker', 'all_dead');
 }
 
-export function endMatch(state, winner, reason) {
+export function endMatch(state, winner, reason, extra = {}) {
   if (state.phase !== 'running') return;
   state.phase = 'ended';
   state.result = {
-    winner, reason, durationMs: state.now,
+    winner, reason, durationMs: state.now, ...extra,
     heroes: [...state.heroes.values()].map(h => ({ id: h.id, name: h.name, cls: h.cls, kills: h.kills, deaths: h.deaths })),
     kerkers: [...state.kerkers.values()].map(k => ({ id: k.id, name: k.name, placed: k.placed, kills: k.kills })),
   };

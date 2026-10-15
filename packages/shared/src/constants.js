@@ -17,13 +17,31 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 16;
 
 export const DEFAULT_SETTINGS = {
-  kerkerCount: 1,        // 1..3
+  teamSize: 2,           // Spieler pro Team; wirksam ist min(teamSize, floor(n/2)), damit immer ≥2 Teams entstehen
   durationMin: 12,       // 8..20
 };
 export const SETTINGS_LIMITS = {
-  kerkerCount: [1, 3],
+  teamSize: [1, 8],
   durationMin: [8, 20],
 };
+export const MAX_TEAMS = 16;
+export const TEAM_NAMES = ['Rot', 'Blau', 'Grün', 'Gelb', 'Lila', 'Orange', 'Türkis', 'Pink', 'Braun', 'Grau', 'Weiß', 'Schwarz', 'Mint', 'Ocker', 'Indigo', 'Koralle'];
+export const TEAM_COLORS = ['#e0534f', '#5aa9e6', '#5fc68a', '#f2d16b', '#a77be0', '#f08a3c', '#4fd1c5', '#f06fb0', '#a0785a', '#9aa0a6', '#f0f0f0', '#55555f', '#9ff0c8', '#c8a24a', '#6a5acd', '#ff7f6e'];
+// Serien-Wertung: jedes Team ist genau einmal Kerker, Runden = Teams.
+export const SERIES_POINTS = { kerkerWin: 3, heroWin: 2, deliverer: 1 };
+
+/** Teamgröße, die bei n Spielern wirklich gilt (immer ≥2 Teams), und die Teamgrößen-Verteilung. */
+export function effectiveTeamSize(n, teamSize) {
+  return Math.max(1, Math.min(teamSize, Math.floor(n / 2)));
+}
+export function teamSizes(n, teamSize) {
+  if (n < 2) return [n];
+  const k = effectiveTeamSize(n, teamSize);
+  const count = Math.min(MAX_TEAMS, Math.max(2, Math.floor(n / k)));
+  const sizes = Array(count).fill(Math.floor(n / count));
+  for (let i = 0; i < n % count; i++) sizes[i]++;
+  return sizes;
+}
 
 // ── Helden ──────────────────────────────────────────────
 export const HERO_RADIUS = 0.35; // Kollisionskreis in Kacheln
@@ -94,7 +112,8 @@ export const EV = {
   // Client → Server
   LOBBY_CREATE: 'lobby:create', LOBBY_JOIN: 'lobby:join', LOBBY_LEAVE: 'lobby:leave',
   LOBBY_READY: 'lobby:ready', LOBBY_CLASS: 'lobby:class', LOBBY_SETTINGS: 'lobby:settings',
-  LOBBY_ASSIGN: 'lobby:assign', LOBBY_START: 'lobby:start', LOBBY_LIST: 'lobby:list',
+  LOBBY_TEAM: 'lobby:team', LOBBY_SHUFFLE: 'lobby:shuffle', LOBBY_START: 'lobby:start', LOBBY_LIST: 'lobby:list',
+  LOBBY_ABORT_SERIES: 'lobby:abort_series',
   GAME_INPUT: 'game:input', GAME_PLACE: 'game:place', GAME_LEAVE: 'game:leave',
   // Server → Client
   LOBBY_STATE: 'lobby:state', LOBBY_LIST_STATE: 'lobby:list_state',

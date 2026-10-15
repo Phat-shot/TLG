@@ -25,9 +25,15 @@ Datenbank.
   3 s unsichtbar).
 - **Sieg**: Helden, wenn das Artefakt den Ausgang erreicht. Kerker, wenn die
   Zeit abläuft oder alle Helden ohne Leben tot sind.
-- **Rotation**: Die Lobby merkt sich, wer wie oft Kerker war; wer am seltensten
-  dran war, baut als Nächstes. Der Host kann Rollen festpinnen (1 bis 3
-  Kerker-Spieler pro Match). Eine Abend-Wertung zählt Siege pro Rolle.
+- **Serie mit festen Teams**: Der Host legt die Spieler pro Team fest (2er-Teams
+  ab 4 Spielern, 3er ab 6 usw. — es müssen immer mindestens 2 Teams entstehen;
+  7 Spieler bei 2er-Teams ergeben 3, 2, 2). Teams werden automatisch verteilt,
+  der Host kann verschieben oder neu mischen. **Runden = Teams**: jedes Team ist
+  genau einmal Kerker, die übrigen Teams fliehen gemeinsam, pro Runde eine neue
+  Karte. 6 Spieler in 2er-Teams heißt 3 Runden, je 2 Kerkermeister gegen 4 Helden.
+- **Punkte**: Kerker-Sieg 3 fürs Kerker-Team. Helden-Sieg 2 für jedes Heldenteam,
+  +1 fürs Team des Artefakt-Trägers. Nach der letzten Runde steht das Siegerteam.
+  Verlässt ein ganzes Team die Serie, entfällt seine Kerker-Runde.
 
 Alle Zahlen stehen in `packages/shared/src/constants.js`.
 
@@ -37,7 +43,7 @@ Alle Zahlen stehen in `packages/shared/src/constants.js`.
 packages/shared/   Konstanten, Kartengenerator (Seed-deterministisch), BFS/A*, Sichtlinie — Server UND Client
 server/            Express + Socket.io, ein Worker-Thread pro Match (server/src/match/worker.js)
   src/match/engine.js   reine Engine: step(), placeCard(), snapshotFor() — ohne Timer, ohne Sockets
-  src/lobby.js          Lobbys im Speicher, Kerker-Rotation, Abend-Wertung
+  src/lobby.js          Lobbys im Speicher, Teams, Serie (Runden, Punkte)
   src/auth.js           Craftworks-Anbindung (Token-Prüfung + Auth-Proxy)
 client/            Vite + TypeScript, Canvas-Renderer, kein Framework
 ```
@@ -83,7 +89,7 @@ Docker: `docker compose up -d` mit `CRAFTWORKS_URL` in der Umgebung oder
 
 ## Was noch fehlt (bewusst)
 
-- Keine Persistenz: Lobbys und Abend-Wertung leben im Speicher, ein
+- Keine Persistenz: Lobbys, Teams und Serienstand leben im Speicher, ein
   Server-Neustart heißt "alle neu rein". Leaderboard in Craftworks wäre der
   nächste Schritt (`/api/users/leaderboard/:game_type`).
 - Kein Ton, keine Sprites — Formen und Farben, damit es auf jedem LAN-Rechner

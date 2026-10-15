@@ -9,6 +9,8 @@ import { reasonText } from '../screens/lobby';
 
 export type StartPayload = {
   matchId: string; role: 'hero' | 'kerker'; endsAt: number; you: { cls?: string };
+  round: number; rounds: number; kerkerTeam: { id: number; name: string; color: string };
+  teams: { id: number; name: string; color: string; members: string[] }[];
   map: { w: number; h: number; tiles: number[]; entrance: P; exit: P; artifact: P };
   heroes: { id: string; name: string; cls: string }[]; kerkers: { id: string; name: string }[];
 };
@@ -26,6 +28,7 @@ export function startGame(me: User, start: StartPayload, onBackToLobby: () => vo
   const s = sock();
   const map = deserializeMap(start.map as any) as any;
   const isKerker = start.role === 'kerker';
+  const teamColor = (id: string) => start.teams?.find(t => t.members.includes(id))?.color || 'inherit';
   const names = new Map<string, string>([...start.heroes.map(x => [x.id, x.name] as [string, string]), ...start.kerkers.map(x => [x.id, x.name] as [string, string])]);
 
   // ── DOM ──
@@ -280,7 +283,9 @@ export function startGame(me: User, start: StartPayload, onBackToLobby: () => vo
     for (let i = feedLines.length - 1; i >= 0; i--) if (feedLines[i].until < now) { feedLines[i].el.remove(); feedLines.splice(i, 1); }
     if (now - lastHud < 100 || !cur) return; lastHud = now;
     const timeLeft = start.endsAt - cur.now;
-    const parts: Node[] = [h('span', {}, '⏱ ', h('b', { style: { color: timeLeft < 60000 ? 'var(--red)' : 'inherit' } }, fmtTime(timeLeft))), h('span', {}, '♥ Leben ', h('b', {}, String(cur.lives)))];
+    const parts: Node[] = [
+      h('span', { class: 'muted' }, `Runde ${start.round}/${start.rounds} · Kerker: `, h('b', { style: { color: start.kerkerTeam.color } }, start.kerkerTeam.name)),
+      h('span', {}, '⏱ ', h('b', { style: { color: timeLeft < 60000 ? 'var(--red)' : 'inherit' } }, fmtTime(timeLeft))), h('span', {}, '♥ Leben ', h('b', {}, String(cur.lives)))];
     if (isKerker) parts.push(h('span', { class: 'row' }, '✦ Mana ', h('b', {}, String(cur.mana ?? 0)), h('span', { class: 'bar mana' }, h('i', { style: { width: `${(cur.mana ?? 0) / 2}%` } }))));
     else if (meHero) {
       const cls = (HERO_CLASSES as any)[meHero.cls];
@@ -291,7 +296,7 @@ export function startGame(me: User, start: StartPayload, onBackToLobby: () => vo
     }
     hudTop.replaceChildren(...parts);
     hudLeft.replaceChildren(...cur.heroes.map((hh: any) => h('div', { class: 'row', style: { opacity: hh.alive ? 1 : .5 } },
-      h('span', { style: { color: CLASS_COLOR[hh.cls] } }, '●'), h('span', {}, hh.name), h('span', { class: 'bar', style: { width: '70px' } }, h('i', { style: { width: `${100 * hh.hp / hh.maxHp}%` } })),
+      h('span', { style: { color: CLASS_COLOR[hh.cls] } }, '●'), h('span', { style: { color: teamColor(hh.id) } }, hh.name), h('span', { class: 'bar', style: { width: '70px' } }, h('i', { style: { width: `${100 * hh.hp / hh.maxHp}%` } })),
       cur!.artifact?.carrier === hh.id ? h('span', { style: { color: 'var(--accent)' } }, '◆') : null)));
     if (isKerker) renderCards();
   }
@@ -316,6 +321,8 @@ export function startGame(me: User, start: StartPayload, onBackToLobby: () => vo
       root.append(h('div', { class: 'overlay' }, h('div', { class: 'card' },
         h('h1', { style: { color: result.winner ? (youWon ? 'var(--green)' : 'var(--red)') : 'inherit' } }, result.winner === 'heroes' ? 'Die Helden entkommen!' : result.winner === 'kerker' ? 'Der Kerker behält alles.' : 'Match beendet'),
         h('p', { class: 'muted' }, reasonText(result.reason) + ` Dauer ${fmtTime(result.durationMs || 0)}.`),
+        lobbyState?.teams ? h('div', { class: 'row', style: { gap: '14px', marginBottom: '10px' } }, ...lobbyState.teams.map((t: any) => h('span', { style: { color: t.color } }, `${t.name} ${t.points}`))) : null,
+        lobbyState?.series ? h('p', { class: 'muted' }, lobbyState.series.round < lobbyState.series.rounds ? `Nächste Runde: ${lobbyState.series.round + 1} von ${lobbyState.series.rounds}` : 'Letzte Runde gespielt.') : lobbyState?.lastSeries?.winner ? h('p', {}, h('b', { style: { color: 'var(--accent)' } }, `Serie vorbei — Team ${lobbyState.lastSeries.winner} gewinnt!`)) : null,
         h('table', {}, h('tr', {}, h('th', {}, 'Spieler'), h('th', {}, 'Rolle'), h('th', {}, 'Kills'), h('th', {}, 'Tode')), ...rows),
         h('div', { style: { marginTop: '16px' } }, h('button', { class: 'primary', onclick: onBackToLobby }, 'Zurück zur Lobby')),
       )));

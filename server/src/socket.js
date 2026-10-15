@@ -1,6 +1,6 @@
 // Socket-Schicht: Handshake-Auth über Craftworks, Lobby-Ereignisse, Match-Weiterleitung.
 // Ein Nutzer = eine Verbindung (zweiter Tab verdrängt den ersten).
-import { EV, ROLE, HERO_CLASS_IDS } from '@tlg/shared';
+import { EV, ROLE } from '@tlg/shared';
 import { LobbyError } from './lobby.js';
 
 const DISCONNECT_GRACE_MS = 45_000;
@@ -28,7 +28,7 @@ export function attachSocket(io, { auth, lobbies, matches, log = console }) {
     const p = lobby.players?.find(p => p.id === socket.data.user.id);
     if (!p || !lobby.payloads) return;
     socket.join(roleRoom(lobby.matchId, p.role));
-    socket.emit(EV.GAME_START, { matchId: lobby.matchId, ...lobby.payloads[p.id] });
+    socket.emit(EV.GAME_START, { matchId: lobby.matchId, ...lobby.roundInfo, ...lobby.payloads[p.id] });
   }
   function leaveMatchRooms(socket, lobby) {
     if (!lobby?.matchId) return;
@@ -82,11 +82,16 @@ export function attachSocket(io, { auth, lobbies, matches, log = console }) {
     socket.on(EV.LOBBY_READY, guarded(({ ready } = {}) => broadcastLobby(lobbies.setReady(user.id, ready))));
     socket.on(EV.LOBBY_CLASS, guarded(({ cls } = {}) => broadcastLobby(lobbies.setClass(user.id, cls))));
     socket.on(EV.LOBBY_SETTINGS, guarded((patch = {}) => broadcastLobby(lobbies.setSettings(user.id, patch))));
-    socket.on(EV.LOBBY_ASSIGN, guarded(({ userId, pin } = {}) => broadcastLobby(lobbies.assign(user.id, userId, pin))));
+    socket.on(EV.LOBBY_TEAM, guarded(({ userId, team } = {}) => broadcastLobby(lobbies.moveToTeam(user.id, userId, team))));
+    socket.on(EV.LOBBY_SHUFFLE, guarded(() => broadcastLobby(lobbies.shuffleTeams(user.id))));
+    socket.on(EV.LOBBY_ABORT_SERIES, guarded(() => { broadcastLobby(lobbies.abortSeries(user.id)); broadcastList(); }));
 
+    // Ohne laufende Serie startet das die Serie (Teams werden eingefroren), sonst die nächste Runde.
     socket.on(EV.LOBBY_START, guarded(() => {
-      const { lobby, players, settings, seed } = lobbies.start(user.id);
+      const cur = lobbies.get(user.id);
+      const { lobby, players, settings, seed, round, rounds, kerkerTeam } = cur?.series ? lobbies.startRound(user.id) : lobbies.startSeries(user.id);
       lobby.payloads = null;
+      lobby.roundInfo = { round, rounds, kerkerTeam, teams: lobby.series.teams.map(t => ({ id: t.id, name: t.name, color: t.color, members: t.members })) };
       matches.create(lobby.matchId, { seed, players, settings });
       broadcastLobby(lobby); broadcastList();
     }));
@@ -147,7 +152,7 @@ export function attachSocket(io, { auth, lobbies, matches, log = console }) {
     if (!lobby) return;
     const code = lobby.code;
     lobbies.finish(code, result);
-    lobby.payloads = null;
+    lobby.payloads = null; lobby.roundInfo = null;
     io.to(`lobby:${code}`).emit(EV.GAME_OVER, { result, lobby: stateOf(lobby) });
     for (const s of io.sockets.adapter.rooms.get(roleRoom(matchId, ROLE.HERO)) || []) io.sockets.sockets.get(s)?.leave(roleRoom(matchId, ROLE.HERO));
     for (const s of io.sockets.adapter.rooms.get(roleRoom(matchId, ROLE.KERKER)) || []) io.sockets.sockets.get(s)?.leave(roleRoom(matchId, ROLE.KERKER));

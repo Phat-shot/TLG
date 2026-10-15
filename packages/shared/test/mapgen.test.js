@@ -67,3 +67,22 @@ test('Sichtlinie wird von Mauern unterbrochen', () => {
   m.tiles[idx(5, 2, 1)] = 0;
   assert.ok(lineOfSight(m, 1, 1, 3, 1));
 });
+
+test('Teamgrößen: immer ≥2 Teams, Rest auf die ersten Teams, Kerker-Team nie kleiner als die Teamgröße', async () => {
+  const { teamSizes, effectiveTeamSize } = await import('../src/constants.js');
+  assert.deepEqual(teamSizes(6, 2), [2, 2, 2]);
+  assert.deepEqual(teamSizes(7, 2), [3, 2, 2]);
+  assert.deepEqual(teamSizes(4, 2), [2, 2]);
+  assert.deepEqual(teamSizes(5, 3), [3, 2]);          // 3er erst ab 6 → wirksam 2
+  assert.equal(effectiveTeamSize(5, 3), 2);
+  assert.deepEqual(teamSizes(3, 2), [1, 1, 1]);       // 2er erst ab 4 → wirksam 1
+  assert.deepEqual(teamSizes(16, 1).length, 16);
+  assert.deepEqual(teamSizes(16, 4), [4, 4, 4, 4]);
+  assert.deepEqual(teamSizes(2, 2), [1, 1]);
+  for (let n = 2; n <= 16; n++) for (let k = 1; k <= 8; k++) {
+    const sz = teamSizes(n, k);
+    assert.equal(sz.reduce((a, b) => a + b, 0), n);
+    assert.ok(sz.length >= 2);
+    assert.ok(Math.min(...sz) >= effectiveTeamSize(n, k));
+  }
+});

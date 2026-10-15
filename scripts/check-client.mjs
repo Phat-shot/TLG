@@ -40,7 +40,7 @@ try {
   await B.getByRole('button', { name: 'Bereit!' }).click({ timeout: 5000 });
   await A.getByText('✓ bereit').nth(1).waitFor({ timeout: 5000 });
   await A.locator('.card.wide').screenshot({ path: path.join(outDir, 'lobby.png') });
-  await A.getByRole('button', { name: /Match 1 starten/ }).click();
+  await A.getByRole('button', { name: /Serie starten/ }).click();
   await A.locator('#game canvas').waitFor({ timeout: 5000 });
   await B.locator('#game canvas').waitFor({ timeout: 5000 });
   await A.waitForTimeout(600);
