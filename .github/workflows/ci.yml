@@ -1,0 +1,47 @@
+name: CI & Docker Image
+
+on:
+  push:
+    branches: [main, test, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - name: Browser-Rauchtest (echter Client, echter Server, nachgebauter Craftworks)
+        run: |
+          npx --yes playwright@1.56.1 install --with-deps chromium
+          npm i --no-save playwright@1.56.1
+          node scripts/check-client.mjs "$RUNNER_TEMP/shots"
+
+  docker:
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: COMMIT_SHA=${{ github.sha }}
+          tags: |
+            ghcr.io/phat-shot/tlg:${{ github.ref_name == 'main' && 'latest' || 'test' }}
+            ghcr.io/phat-shot/tlg:${{ github.sha }}

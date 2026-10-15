@@ -1,0 +1,13 @@
+# TLG neben einem laufenden Craftworks. Nur eine Umgebungsvariable ist Pflicht:
+# CRAFTWORKS_URL — die Adresse, unter der der TLG-Server Craftworks erreicht
+# (z.B. https://dev.srz.one, oder http://platform_server:4000 im selben Docker-Netz).
+services:
+  tlg:
+    image: ghcr.io/phat-shot/tlg:${TLG_TAG:-test}
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${TLG_PORT:-3100}:3000"
+    environment:
+      CRAFTWORKS_URL: ${CRAFTWORKS_URL:?CRAFTWORKS_URL fehlt}
+      NODE_ENV: production
