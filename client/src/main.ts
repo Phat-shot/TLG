@@ -5,6 +5,7 @@ import { showLobbyBrowser, showRoom, type LobbyState } from './screens/lobby';
 import { startGame, type StartPayload } from './game/game';
 import { h, mount } from './ui';
 import { EV } from '@tlg/shared';
+import { startEmbers, stopEmbers } from './embers';
 
 let user: User | null = null;
 let cleanup: (() => void) | null = null;
@@ -16,6 +17,7 @@ let lastResult: any = null;
 function swap(fn: () => (() => void) | void) { cleanup?.(); cleanup = fn() || null; }
 
 async function boot() {
+  startEmbers();
   mount(h('div', { class: 'center' }, h('p', { class: 'muted' }, 'Verbinde…')));
   try { user = await fetchMe(); } catch { mount(h('div', { class: 'center' }, h('div', { class: 'card' }, h('h2', {}, 'TLG-Server nicht erreichbar'), h('button', { onclick: boot }, 'Erneut versuchen')))); return; }
   if (!user) return showLogin(u => { user = u; enter(); });
@@ -37,7 +39,8 @@ function enter() {
   s.on(EV.GAME_START, (p: StartPayload) => {
     game?.stop();
     cleanup?.(); cleanup = null;
-    game = startGame(user!, p, () => { game?.stop(); game = null; if (lobby) swap(() => showRoom(user!, lobby!, lastResult)); else swap(() => showLobbyBrowser(user!, lobbyList, onLogout)); });
+    stopEmbers();
+    game = startGame(user!, p, () => { game?.stop(); game = null; startEmbers(); if (lobby) swap(() => showRoom(user!, lobby!, lastResult)); else swap(() => showLobbyBrowser(user!, lobbyList, onLogout)); });
   });
   s.on(EV.GAME_OVER, ({ result, lobby: st }: any) => {
     lastResult = result; lobby = st;

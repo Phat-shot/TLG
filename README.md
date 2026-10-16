@@ -92,6 +92,7 @@ Docker: `docker compose up -d` mit `CRAFTWORKS_URL` in der Umgebung oder
 - Keine Persistenz: Lobbys, Teams und Serienstand leben im Speicher, ein
   Server-Neustart heißt "alle neu rein". Leaderboard in Craftworks wäre der
   nächste Schritt (`/api/users/leaderboard/:game_type`).
-- Kein Ton, keine Sprites — Formen und Farben, damit es auf jedem LAN-Rechner
-  ohne Grafikkarte flüssig bleibt.
+- Keine Assets: Kacheln, Figuren, Partikel und Licht werden prozedural auf
+  Canvas gezeichnet, Soundeffekte über WebAudio synthetisiert. Läuft damit
+  komplett offline auf der LAN und ohne Grafikkarte flüssig.
 - Balance ist ein Startwert aus Konstanten, kein Ergebnis von Spieltests.

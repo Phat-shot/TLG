@@ -45,7 +45,7 @@ export async function showLogin(onDone: (u: User) => void) {
   };
   mount(h('div', { class: 'center' }, h('div', { class: 'card' },
     h('h1', {}, 'Kerker', h('small', {}, 'The LAN Game')),
-    h('p', { class: 'muted', style: { marginTop: 0 } }, 'Einer baut den Kerker. Die anderen holen das Artefakt. Dann wird getauscht.'),
+    h('p', { class: 'intro' }, 'Ein Team baut den Kerker: Fallen, Mauern, Monster. Die anderen holen das Artefakt und bringen es zum Ausgang. Jede Runde eine neue Karte, jedes Team einmal Kerker.'),
     tabs, body, err,
   )));
   render();
