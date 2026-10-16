@@ -12,7 +12,7 @@ const outDir = process.argv[2] || path.join(here, '..', 'tmp-shots');
 const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); }
-catch { try { ({ chromium } = require('/node-tools/node_modules/playwright')); } catch { console.error('playwright nicht gefunden'); process.exit(2); } }
+catch { try { ({ chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright')); } catch { console.error('playwright nicht gefunden'); process.exit(2); } }
 
 const cw = await startFakeCraftworks();
 const app = createApp({ craftworksUrl: cw.url, clientDist: path.join(here, '..', 'client', 'dist') });
@@ -20,7 +20,7 @@ await new Promise(r => app.server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${app.server.address().port}`;
 const fail = (m) => { console.error('FEHLER:', m); process.exitCode = 1; };
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 try {
   const mk = async () => { const c = await browser.newContext({ viewport: { width: 1280, height: 800 } }); const p = await c.newPage(); p.on('pageerror', e => fail('pageerror: ' + e.message)); return p; };
   const A = await mk(), B = await mk();
@@ -41,8 +41,8 @@ try {
   await A.getByText('✓ bereit').nth(1).waitFor({ timeout: 5000 });
   await A.locator('.card.wide').screenshot({ path: path.join(outDir, 'lobby.png') });
   await A.getByRole('button', { name: /Serie starten/ }).click();
-  await A.locator('#game > canvas').waitFor({ timeout: 5000 });
-  await B.locator('#game > canvas').waitFor({ timeout: 5000 });
+  await A.locator('#game > canvas').waitFor({ timeout: 40000 });
+  await B.locator('#game > canvas').waitFor({ timeout: 40000 });
   await A.waitForTimeout(600);
   const cardsA = await A.locator('.cardbtn').count(), cardsB = await B.locator('.cardbtn').count();
   const kerker = cardsA === 6 ? A : cardsB === 6 ? B : null;

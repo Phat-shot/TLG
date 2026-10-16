@@ -45,7 +45,9 @@ server/            Express + Socket.io, ein Worker-Thread pro Match (server/src/
   src/match/engine.js   reine Engine: step(), placeCard(), snapshotFor() — ohne Timer, ohne Sockets
   src/lobby.js          Lobbys im Speicher, Teams, Serie (Runden, Punkte)
   src/auth.js           Craftworks-Anbindung (Token-Prüfung + Auth-Proxy)
-client/            Vite + TypeScript, Canvas-Renderer, kein Framework
+client/            Vite + TypeScript, Three.js-3D-Renderer (2D-Canvas als Fallback), kein Framework
+  src/game/render3d.ts  Szene: Instanz-Kacheln mit prozeduralen Texturen, Licht/Schatten/Bloom, Nebel des Krieges
+  src/game/models.ts    optionale echte GLB-Modelle über client/public/models/manifest.json
 ```
 
 **Server ist autoritativ**, Clients zeigen nur an. `snapshotFor()` ist die
@@ -92,7 +94,14 @@ Docker: `docker compose up -d` mit `CRAFTWORKS_URL` in der Umgebung oder
 - Keine Persistenz: Lobbys, Teams und Serienstand leben im Speicher, ein
   Server-Neustart heißt "alle neu rein". Leaderboard in Craftworks wäre der
   nächste Schritt (`/api/users/leaderboard/:game_type`).
-- Keine Assets: Kacheln, Figuren, Partikel und Licht werden prozedural auf
-  Canvas gezeichnet, Soundeffekte über WebAudio synthetisiert. Läuft damit
-  komplett offline auf der LAN und ohne Grafikkarte flüssig.
+- Grafik ohne Asset-Dateien: Kerker, Figuren, Texturen, Partikel und Licht
+  entstehen zur Laufzeit in Three.js (Schatten, Bloom, Fackellicht, Nebel des
+  Krieges als Alpha-Textur). `?renderer=2d` erzwingt den Canvas-Fallback.
+  **Für Reforged-Niveau braucht es echte Modelle**: GLB-Dateien (z.B. die
+  CC0-Packs KayKit Adventurers/Skeletons/Dungeon) nach `client/public/models/`
+  legen und in `manifest.json` zuordnen (`hero.krieger`, `monster.brecher` …,
+  mit `scale`, `yaw` und Clip-Namen für idle/walk/attack); der Renderer lädt sie
+  automatisch und nutzt ihre Animationen, prozedurale Figuren bleiben Fallback.
+  Aus der Entwicklungsumgebung sind die Packs nicht herunterladbar, deshalb
+  liegen sie nicht im Repo.
 - Balance ist ein Startwert aus Konstanten, kein Ergebnis von Spieltests.

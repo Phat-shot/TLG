@@ -12,15 +12,15 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const outDir = process.argv[2] || path.join(here, '..', 'tmp-shots');
 const require = createRequire(import.meta.url);
 let chromium;
-try { ({ chromium } = require('playwright')); } catch { ({ chromium } = require('/node-tools/node_modules/playwright')); }
+try { ({ chromium } = require('playwright')); } catch { ({ chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright')); }
 
 const cw = await startFakeCraftworks();
 const app = createApp({ craftworksUrl: cw.url, clientDist: path.join(here, '..', 'client', 'dist') });
 await new Promise(r => app.server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${app.server.address().port}`;
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 try {
-  const mk = async () => { const c = await browser.newContext({ viewport: { width: 1600, height: 900 } }); return c.newPage(); };
+  const mk = async () => { const c = await browser.newContext({ viewport: { width: 1600, height: 900 } }); const p = await c.newPage(); if (process.env.DEBUG_CONSOLE) { p.on('console', m => console.log('[console]', m.type(), m.text().slice(0, 400))); p.on('pageerror', e => console.log('[pageerror]', e.message)); } return p; };
   const pages = [];
   for (const name of ['Anna', 'Ben', 'Cem', 'Dana']) {
     const p = await mk(); pages.push(p);
